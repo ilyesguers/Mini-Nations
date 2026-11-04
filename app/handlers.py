@@ -138,7 +138,8 @@ async def game_info(callback: CallbackQuery) -> None:
     game = callback.data.split(":", 1)[1]
     if game not in {"aviator", "apple"}:
         return await callback.answer("لعبة غير معروفة.", show_alert=True)
-    await callback.message.answer(await stats_text(game))
+    if callback.message:
+        await callback.message.answer(await stats_text(game))
     await callback.answer()
 
 
@@ -146,27 +147,35 @@ async def game_info(callback: CallbackQuery) -> None:
 async def dashboard_callback(callback: CallbackQuery) -> None:
     if not is_owner(callback.from_user.id):
         return await callback.answer("غير مصرح.", show_alert=True)
-    await callback.message.answer(await stats_text(), reply_markup=main_menu())
+    if callback.message:
+        await callback.message.answer(await stats_text(), reply_markup=main_menu())
     await callback.answer()
 
 
-@router.message(Command("export"))
-@router.callback_query(F.data == "export")
-async def export_data(event: Message | CallbackQuery) -> None:
-    if not is_owner(event.from_user.id if event.from_user else None):
-        if isinstance(event, CallbackQuery):
-            return await event.answer("غير مصرح.", show_alert=True)
-        return await deny(event)
+async def build_export_file() -> BufferedInputFile:
     rows = await fetch_rounds()
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(["id", "game", "outcome", "multiplier", "notes", "source", "recorded_at"])
     for row in reversed(rows):
         writer.writerow([row.id, row.game, row.outcome, row.multiplier, row.notes, row.source, row.recorded_at.isoformat()])
-    document = BufferedInputFile(buffer.getvalue().encode("utf-8-sig"),
-                                 filename=f"mini-nations-rounds-{datetime.now(timezone.utc):%Y%m%d}.csv")
-    if isinstance(event, CallbackQuery):
-        await event.message.answer_document(document, caption="سجل النتائج")
-        await event.answer("تم تجهيز الملف.")
-    else:
-        await event.answer_document(document, caption="سجل النتائج")
+    return BufferedInputFile(
+        buffer.getvalue().encode("utf-8-sig"),
+        filename=f"mini-nations-rounds-{datetime.now(timezone.utc):%Y%m%d}.csv",
+    )
+
+
+@router.message(Command("export"))
+async def export_command(message: Message) -> None:
+    if not is_owner(message.from_user.id if message.from_user else None):
+        return await deny(message)
+    await message.answer_document(await build_export_file(), caption="سجل النتائج")
+
+
+@router.callback_query(F.data == "export")
+async def export_callback(callback: CallbackQuery) -> None:
+    if not is_owner(callback.from_user.id):
+        return await callback.answer("غير مصرح.", show_alert=True)
+    if callback.message:
+        await callback.message.answer_document(await build_export_file(), caption="سجل النتائج")
+    await callback.answer("تم تجهيز الملف.")
