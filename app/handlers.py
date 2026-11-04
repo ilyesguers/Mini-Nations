@@ -55,8 +55,8 @@ async def help_command(message: Message) -> None:
         return await deny(message)
     await message.answer(
         "الأوامر المتاحة:\n/dashboard — ملخص الإحصائيات\n"
-        "/record_aviator <multiplier> <win|loss> [notes]\n"
-        "/record_apple <win|loss> [notes]\n"
+        "/record_aviator &lt;multiplier&gt; &lt;win|loss&gt; [notes]\n"
+        "/record_apple &lt;win|loss&gt; [notes]\n"
         "/stats_aviator — إحصائيات الطائرة\n/stats_apple — إحصائيات التفاحة\n"
         "/export — تصدير السجل CSV\n\n"
         "الإحصائيات تصف السجل السابق ولا تتنبأ بنتائج عشوائية."
@@ -159,10 +159,8 @@ async def build_export_file() -> BufferedInputFile:
     writer.writerow(["id", "game", "outcome", "multiplier", "notes", "source", "recorded_at"])
     for row in reversed(rows):
         writer.writerow([row.id, row.game, row.outcome, row.multiplier, row.notes, row.source, row.recorded_at.isoformat()])
-    return BufferedInputFile(
-        buffer.getvalue().encode("utf-8-sig"),
-        filename=f"mini-nations-rounds-{datetime.now(timezone.utc):%Y%m%d}.csv",
-    )
+    return BufferedInputFile(buffer.getvalue().encode("utf-8-sig"),
+                             filename=f"mini-nations-rounds-{datetime.now(timezone.utc):%Y%m%d}.csv")
 
 
 @router.message(Command("export"))
