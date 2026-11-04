@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import isfinite
 from statistics import mean, median
 from typing import Iterable
 
@@ -18,10 +19,22 @@ def summarize_rounds(rows: Iterable[object]) -> RoundSummary:
     items = list(rows)
     wins = sum(1 for row in items if row.outcome == "win")
     losses = sum(1 for row in items if row.outcome == "loss")
-    multipliers = [float(row.multiplier) for row in items if row.multiplier is not None and float(row.multiplier) > 0]
+    multipliers: list[float] = []
+    for row in items:
+        if row.multiplier is None:
+            continue
+        try:
+            value = float(row.multiplier)
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if isfinite(value) and value > 0:
+            multipliers.append(value)
+
     total = len(items)
     return RoundSummary(
-        total=total, wins=wins, losses=losses,
+        total=total,
+        wins=wins,
+        losses=losses,
         win_rate=(wins / total * 100) if total else 0.0,
         average_multiplier=mean(multipliers) if multipliers else None,
         median_multiplier=median(multipliers) if multipliers else None,
