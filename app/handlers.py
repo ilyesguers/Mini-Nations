@@ -17,12 +17,13 @@ router = Router(name="private-owner")
 settings = get_settings()
 
 
-def is_owner(user_id: int | None) -> bool:
-    return user_id == settings.owner_id
+def is_owner(user_id: int | None, chat_type: str | None) -> bool:
+    return user_id == settings.owner_id and chat_type == "private"
 
 
 async def deny(message: Message) -> None:
-    await message.answer("⛔ هذا البوت خاص وغير متاح لهذا الحساب.")
+    if message.chat.type == "private":
+        await message.answer("⛔ هذا البوت خاص وغير متاح لهذا الحساب.")
 
 
 async def fetch_rounds(game: str | None = None) -> list[GameRound]:
@@ -44,14 +45,14 @@ async def add_record(message: Message, game: str, outcome: str, multiplier: floa
 
 @router.message(CommandStart())
 async def start(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer("مرحباً بك في Mini-Nations.\nلوحة خاصة لتسجيل وتحليل بيانات ألعاب Linebet.\n\nاختر لعبة أو افتح لوحة الإحصائيات.", reply_markup=main_menu())
 
 
 @router.message(Command("help"))
 async def help_command(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer(
         "الأوامر المتاحة:\n/dashboard — ملخص الإحصائيات\n"
@@ -65,7 +66,7 @@ async def help_command(message: Message) -> None:
 
 @router.message(Command("record_aviator"))
 async def record_aviator(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     parts = (message.text or "").split(maxsplit=3)
     if len(parts) < 3:
@@ -84,7 +85,7 @@ async def record_aviator(message: Message) -> None:
 
 @router.message(Command("record_apple"))
 async def record_apple(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     parts = (message.text or "").split(maxsplit=2)
     if len(parts) < 2 or parts[1].lower() not in {"win", "loss"}:
@@ -112,28 +113,28 @@ async def stats_text(game: str | None = None) -> str:
 
 @router.message(Command("dashboard"))
 async def dashboard(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer(await stats_text(), reply_markup=main_menu())
 
 
 @router.message(Command("stats_aviator"))
 async def aviator_stats(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer(await stats_text("aviator"))
 
 
 @router.message(Command("stats_apple"))
 async def apple_stats(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer(await stats_text("apple"))
 
 
 @router.callback_query(F.data.startswith("game:"))
 async def game_info(callback: CallbackQuery) -> None:
-    if not is_owner(callback.from_user.id):
+    if not is_owner(callback.from_user.id, callback.message.chat.type if callback.message else None):
         return await callback.answer("غير مصرح.", show_alert=True)
     game = callback.data.split(":", 1)[1]
     if game not in {"aviator", "apple"}:
@@ -145,7 +146,7 @@ async def game_info(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "dashboard")
 async def dashboard_callback(callback: CallbackQuery) -> None:
-    if not is_owner(callback.from_user.id):
+    if not is_owner(callback.from_user.id, callback.message.chat.type if callback.message else None):
         return await callback.answer("غير مصرح.", show_alert=True)
     if callback.message:
         await callback.message.answer(await stats_text(), reply_markup=main_menu())
@@ -165,14 +166,14 @@ async def build_export_file() -> BufferedInputFile:
 
 @router.message(Command("export"))
 async def export_command(message: Message) -> None:
-    if not is_owner(message.from_user.id if message.from_user else None):
+    if not is_owner(message.from_user.id if message.from_user else None, message.chat.type):
         return await deny(message)
     await message.answer_document(await build_export_file(), caption="سجل النتائج")
 
 
 @router.callback_query(F.data == "export")
 async def export_callback(callback: CallbackQuery) -> None:
-    if not is_owner(callback.from_user.id):
+    if not is_owner(callback.from_user.id, callback.message.chat.type if callback.message else None):
         return await callback.answer("غير مصرح.", show_alert=True)
     if callback.message:
         await callback.message.answer_document(await build_export_file(), caption="سجل النتائج")

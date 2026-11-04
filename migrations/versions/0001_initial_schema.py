@@ -19,9 +19,6 @@ def upgrade() -> None:
         sa.Column("source", sa.String(length=24), nullable=False, server_default="manual"),
         sa.Column("details", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
         sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint("game IN ('aviator', 'apple')", name="ck_game_rounds_game"),
-        sa.CheckConstraint("outcome IN ('win', 'loss')", name="ck_game_rounds_outcome"),
-        sa.CheckConstraint("multiplier IS NULL OR multiplier > 0", name="ck_game_rounds_multiplier_positive"),
     )
     op.create_index("ix_game_rounds_game_recorded_at", "game_rounds", ["game", "recorded_at"])
 
